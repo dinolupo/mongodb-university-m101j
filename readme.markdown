@@ -224,6 +224,18 @@ which document would be returned?
 #### Result:
 The document with _id=2
 
+
+### QUIZ: JAVA DRIVER: UPDATE AND REPLACE - In the following code fragment, what is the Java expression in place of xxxx that will set the field "examiner" to the value "Jones" for the document with _id of 1. Please use the $set operator.
+```java
+// update using $set
+scores.updateOne(new Document("_id", 1), xxxx);
+```
+#### Result:
+```java
+new Document("$set", new Document("examiner", "Jones"))
+```
+
+
 -----
 ### template
 ```javascript
