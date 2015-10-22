@@ -188,6 +188,25 @@ doc = people.find().first();
 ```
 
 
+### QUIZ: JAVA DRIVER: QUERYING WITH A FILTER - Given a collection named "scores" of documents with two fields -- type and score -- what is the correct line of code to find all documents where type is "quiz" and score is greater than 20 and less than 90. Select all that apply.
+#### Result:
+```java
+// longer using document query
+scores.find(new Document("type", "quiz").append("score", new Document("$gt", 20).append("$lt", 90)));
+// concise method using Filters static methods
+scores.find(Filters.and(Filters.eq("type", "quiz"), Filters.gt("score", 20), Filters.lt("score", 90)));
+```
+
+
+### QUIZ: JAVA DRIVER: QUERYING WITH A PROJECTION - Given a variable named "students" of type MongoCollection<Document>, which of the following lines of code could be used to find all documents in the collection, retrieving only the "phoneNumber" field.
+#### Result:
+```java
+// longer using document projections
+students.find().projection(new Document("phoneNumber", 1).append("_id", 0));
+// concise method using Projections static methods
+students.find().projection(Projections.fields(Projections.include("phoneNumber"), Projections.excludeId());
+```
+
 -----
 ### template
 ```javascript
