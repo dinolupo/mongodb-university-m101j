@@ -2,7 +2,7 @@ package com.mongodb;
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Projections;
+import com.mongodb.client.model.Sorts;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 
@@ -10,15 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static com.mongodb.Helper.printJson;
 import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Projections.*;
-
+import static com.mongodb.client.model.Projections.excludeId;
+import static com.mongodb.client.model.Projections.fields;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.client.model.Sorts.*;
+import static com.mongodb.Helper.*;
 
 /**
  * Created by dino on 22/10/15.
  */
-public class FindWithFilterAndProjection {
+public class FindWithSortSkipLimitTest {
     public static void main(String[] args) {
         MongoClientOptions options = MongoClientOptions.builder().connectionsPerHost(50).build();
         MongoClient client = new MongoClient(new ServerAddress(), options);
@@ -28,32 +30,32 @@ public class FindWithFilterAndProjection {
         coll.drop();
 
         for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++)
             coll.insertOne(new Document()
-                    .append("x", new Random().nextInt(2))
-                    .append("y", new Random().nextInt(100))
-                    .append("i", i));
+                    .append("i", i)
+                    .append("j", j));
         }
 
-        Bson filter = and(eq("x", 0),  gt("y", 10), lt("y", 90));
+        Bson projection = fields(include("i", "j"), excludeId() );
 
         // longest method
-        //Bson projection = new Document("x", 0).append("_id", 0);
-        // or
-        //Bson projection = new Document("y", 1).append("i", 1).append("_id", 0);
+//        Bson sort = new Document("i", 1).append("j", -1);
 
-        // shortest method
-        Bson projection = fields(include("y", "i"), excludeId() );
+        // shortes method using static builders
+        Bson sort = orderBy(ascending("i"), descending("j"));
 
         // add projection to filter contents of the result array
-        List<Document> all = coll.find(filter)
+        List<Document> all = coll.find()
                 .projection(projection)
+                .sort(sort)
+                .skip(20)
+                .limit(50)
                 .into(new ArrayList<Document>());
+
         for (Document document : all) {
             printJson(document);
         }
 
-        long count = coll.count(filter);
-        System.out.println("Count:" + count);
-    }
 
+    }
 }

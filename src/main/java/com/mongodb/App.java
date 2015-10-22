@@ -5,6 +5,7 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.bson.Document;
 
+import static com.mongodb.Helper.printJson;
 import static java.util.Arrays.asList;
 
 /**
@@ -30,15 +31,15 @@ public class App
                 .append("age", 25)
                 .append("profession", "hacker");
 
-        System.out.println(smith);
+        printJson(smith);
         coll.insertOne(smith);
         //coll.insertMany(asList(smith, jason));
-        System.out.println(smith);
+        printJson(smith);
 
         smith.remove("_id");
-        System.out.println(smith);
+        printJson(smith);
         coll.insertOne(smith);
-        System.out.println(smith);
+        printJson(smith);
 
     }
 }

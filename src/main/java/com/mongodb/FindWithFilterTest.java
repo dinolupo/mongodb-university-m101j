@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.mongodb.Helper.printJson;
 import static com.mongodb.client.model.Filters.*;
 
 /**
@@ -48,7 +49,4 @@ public class FindWithFilterTest {
 
     }
 
-    private static void printJson(Document document) {
-        System.out.println(document.toJson());
-    }
 }

@@ -207,6 +207,23 @@ students.find().projection(new Document("phoneNumber", 1).append("_id", 0));
 students.find().projection(Projections.fields(Projections.include("phoneNumber"), Projections.excludeId());
 ```
 
+
+### QUIZ: JAVA DRIVER: QUERYING WITH SORT, SKIP AND LIMIT - Supposed you had the following documents in a collection named things.
+```javascript
+{ "_id" : 0, "value" : 10 }
+{ "_id" : 1, "value" : 5 }
+{ "_id" : 2, "value" : 7 }
+{ "_id" : 3, "value" : 20 }
+```
+If you performed the following query in the Java driver:
+```java
+collection.find().sort(new Document("value", -1)).skip(2).limit(1)
+```
+
+which document would be returned?
+#### Result:
+The document with _id=2
+
 -----
 ### template
 ```javascript
