@@ -235,6 +235,19 @@ scores.updateOne(new Document("_id", 1), xxxx);
 new Document("$set", new Document("examiner", "Jones"))
 ```
 
+### QUIZ: JAVA DRIVER: DELETE - Given a collection with the following documents, how many will be affected by the below update statement?
+```java
+{ _id: 0, x: 1 }
+{ _id: 1, x: 1 }
+{ _id: 2, x: 1 }
+{ _id: 3, x: 2 }
+{ _id: 4, x: 2 }
+
+collection.deleteOne(Filters.eq("x", 1))
+```
+#### Result:
+1
+
 
 -----
 ### template

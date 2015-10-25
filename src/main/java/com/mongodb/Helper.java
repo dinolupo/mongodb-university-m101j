@@ -13,6 +13,8 @@ import java.io.StringWriter;
  * Created by dino on 22/10/15.
  */
 public class Helper {
+
+    // USE JsonMode.SHELL, false to print on one line, JsonMode.SHELL, true to pretty print
     public static void printJson(Document doc) {
         JsonWriter jsonWriter = new JsonWriter(new StringWriter(), new JsonWriterSettings(JsonMode.SHELL, false));
         new DocumentCodec().encode(jsonWriter, doc, EncoderContext.builder().isEncodingCollectibleDocument(true).build());

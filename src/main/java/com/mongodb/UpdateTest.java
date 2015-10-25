@@ -47,7 +47,7 @@ public class UpdateTest {
          // update many - increment all x with _id >= 5
         coll.updateMany(gte("_id", 5), new Document("$inc", new Document("x", 1)));
 
-        // add projection to filter contents of the result array
+        // print results
         List<Document> all = coll.find().into(new ArrayList<Document>());
         for (Document document : all) {
             printJson(document);
