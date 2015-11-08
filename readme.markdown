@@ -602,7 +602,7 @@ Which of the following documents will be returned, assuming they are in the movi
 - Goal: Efficient Read/Write Operations
 	- selectivity: minimize records scanned
 	- other ops: how are sorts handled?
-	- 
+	
 __nGoal must be similar to indexScanned__
 
 ### QUIZ: EFFICIENCY OF INDEX USE EXAMPLE
@@ -742,7 +742,7 @@ db.setProfilingLevel(2, 0)
 db.system.profile.find({op:'query', ns:'blog.posts'}).sort( { ts : -1 } ).limit(1).pretty()
 ```
 
-1. ##### Solution to optimize the blog page:
+##### Solution 1 to optimize the blog page:
 
 > create and index for the date field:
 
@@ -750,7 +750,7 @@ db.system.profile.find({op:'query', ns:'blog.posts'}).sort( { ts : -1 } ).limit(
 db.posts.createIndex({date:-1})
 ```
 
-2. ##### Solution to optimize the page that displays blog posts by tag (http://localhost:8082/tag/whatever) 
+##### Solution 2 to optimize the page that displays blog posts by tag (http://localhost:8082/tag/whatever) 
 
 > the profile shows the following query:
 
@@ -777,7 +777,7 @@ db.posts.createIndex({date:-1})
  
 ```db.posts.createIndex({tags: 1, date: -1})```
 
-3. ##### Solution to optimize the page that displays a blog entry by permalink (http://localhost:8082/post/permalink)
+##### Solution 3 to optimize the page that displays a blog entry by permalink (http://localhost:8082/post/permalink)
 
 The profile shows the following query:
 
