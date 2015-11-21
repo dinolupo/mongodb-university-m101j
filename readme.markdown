@@ -1305,6 +1305,278 @@ db.zips.aggregate([ {$project: { first_char: {$substr : ["$city",0,1]}, city: "$
 { "_id" : null, "total" : 298015 }
 ```
 
+-----
+
+## Week 6 - Application Engineering
+
+### Write Concern
+
+```
+W	|	j	|	notes
+-------------------
+1		0		(default) fast - small window of vulnerability, 
+				journal may be not written to database
+1		1		slow - no vulnerabiliy
+0		unack write, present for historical reason (not recommended)
+```
+
+#### Quiz
+Provided you assume that the disk is persistent, what are the w and j settings required to guarantee that an insert or update has been written all the way to disk.
+#### Result:
+w=1, j=1
+
+### Network Errors
+
+consider w=1 and j=1
+
+```
+Application --------------------> mongod
+            <-- network error ---
+```
+
+You do not know if the write is succesful in the following cases:
+
+- if network reset or crash between receiving the call and sending the response
+- mongodb crashes between the write operation and sending the response
+
+### Replication
+
+- Availailabity
+- Fault Tolerance
+
+```
+Nodes
+   *          *            *
+Primary   Secondary    Secondary
+(down)    |____________________|
+                    |
+            (primary election)
+  
+  *	          *             *
+(down)     Primary      Secondary
+		
+```
+
+**Minumum number of nodes to make an election of a new Primary node is 3**
+
+### Replica Set Elections
+
+#### Types of Replica Set Nodes: 
+
+- Regular
+- Arbiter (only voting purpouses)
+- Delayed Node / Regular (cannot become a Primary but votes) Priority = 0
+- Hidden (use for analytics, Priority=0 cannot become the primary and can partecipate in election)
+
+### Write Consistency
+
+- There is only one primary at a time, and by default all writes and reads goes from the driver to that primary. 
+- If a primary goes down, there is a small amount of time, during the election of a new primary, where you cannot do any write until a new primary is up
+- you can achieve an *Eventual Consistency* if you set the replica set to accept read from another Secondary node. The replica is **Asynchronous** so you may be read another previous value between write and read if you do this.
+
+> command to accept reads from secondary nodes and achieve *Eventual Consistency*:
+
+`> rs.slaveOk()`
+
+### Creating a replica set
+
+create a replica set on the same machine for learning purpouse, normally you create one mongod for each machine running on the same port
+> create_replica.sh 
+
+```bash
+#!/usr/bin/env bash
+
+mkdir -p /data/rs1 /data/rs2 /data/rs3
+mongod --replSet m101 --logpath "1.log" --dbpath /data/rs1 --port 27017 --oplogSize 64 --fork --smallfiles
+mongod --replSet m101 --logpath "2.log" --dbpath /data/rs2 --port 27018 --oplogSize 64 --smallfiles --fork
+mongod --replSet m101 --logpath "3.log" --dbpath /data/rs3 --port 27019 --oplogSize 64 --smallfiles --fork
+``` 
+
+To tell the mongod to communicate with each other we have to create a configuration and execute the configuration. We have to use the same id that we gave to the command before:
+
+> init_replica.js
+
+```javascript
+config = { _id: "m101", members:[
+          { _id : 0, host : "localhost:27017"},
+          { _id : 1, host : "localhost:27018"},
+          { _id : 2, host : "localhost:27019"} ]
+};
+
+rs.initiate(config);
+rs.status();
+```
+
+### Replica Set Internals
+
+- _oplog_ is present on all nodes, and all Secondary reads from the Primary oplog 
+
+### Failover and Rollback
+
+- A secondary node that has been a primary before, Rollbacks writes that are not present in the current primary node.
+
+### Review Implications of Replication
+
+- Seed List - The driver should know and connect to at least one node of the replica to use that.
+- Write Concern - set w and j accordingly. w can be higher than 1, and it waits at least w node to acknowledge
+- Read Preferences - read from primary or secondaries
+- Errors can happen - networks, etc. so check exceptions
+
+### Sharding
+
+Sharding is how we handle scaling out. EVERY SHARD IS A REPLICA SET.
+
+`mongos` is the driver that distributes the writes to different shards.
+
+mongos distributes the writes by a shard key, and you can use the following approaches:
+
+1. range-based approach
+2. hash-based approach
+
+The hash-based approach may be slower if you do range-based queries.
+
+### Building a Sharding Environment
+
+> Script to create a sharded environment on localhost 
+
+```bash
+# Andrew Erlichson
+# MongoDB
+# script to start a sharded environment on localhost
+
+# clean everything up
+echo "killing mongod and mongos"
+killall mongod
+killall mongos
+echo "removing data files"
+rm -rf /data/config
+rm -rf /data/shard*
+
+
+# start a replica set and tell it that it will be shard0
+echo "starting servers for shard 0"
+mkdir -p /data/shard0/rs0 /data/shard0/rs1 /data/shard0/rs2
+mongod --replSet s0 --logpath "s0-r0.log" --dbpath /data/shard0/rs0 --port 37017 --fork --shardsvr --smallfiles
+mongod --replSet s0 --logpath "s0-r1.log" --dbpath /data/shard0/rs1 --port 37018 --fork --shardsvr --smallfiles
+mongod --replSet s0 --logpath "s0-r2.log" --dbpath /data/shard0/rs2 --port 37019 --fork --shardsvr --smallfiles
+
+sleep 5
+# connect to one server and initiate the set
+echo "Configuring s0 replica set"
+mongo --port 37017 << 'EOF'
+config = { _id: "s0", members:[
+          { _id : 0, host : "localhost:37017" },
+          { _id : 1, host : "localhost:37018" },
+          { _id : 2, host : "localhost:37019" }]};
+rs.initiate(config)
+EOF
+
+# start a replicate set and tell it that it will be a shard1
+echo "starting servers for shard 1"
+mkdir -p /data/shard1/rs0 /data/shard1/rs1 /data/shard1/rs2
+mongod --replSet s1 --logpath "s1-r0.log" --dbpath /data/shard1/rs0 --port 47017 --fork --shardsvr --smallfiles
+mongod --replSet s1 --logpath "s1-r1.log" --dbpath /data/shard1/rs1 --port 47018 --fork --shardsvr --smallfiles
+mongod --replSet s1 --logpath "s1-r2.log" --dbpath /data/shard1/rs2 --port 47019 --fork --shardsvr --smallfiles
+
+sleep 5
+
+echo "Configuring s1 replica set"
+mongo --port 47017 << 'EOF'
+config = { _id: "s1", members:[
+          { _id : 0, host : "localhost:47017" },
+          { _id : 1, host : "localhost:47018" },
+          { _id : 2, host : "localhost:47019" }]};
+rs.initiate(config)
+EOF
+
+# start a replicate set and tell it that it will be a shard2
+echo "starting servers for shard 2"
+mkdir -p /data/shard2/rs0 /data/shard2/rs1 /data/shard2/rs2
+mongod --replSet s2 --logpath "s2-r0.log" --dbpath /data/shard2/rs0 --port 57017 --fork --shardsvr --smallfiles
+mongod --replSet s2 --logpath "s2-r1.log" --dbpath /data/shard2/rs1 --port 57018 --fork --shardsvr --smallfiles
+mongod --replSet s2 --logpath "s2-r2.log" --dbpath /data/shard2/rs2 --port 57019 --fork --shardsvr --smallfiles
+
+sleep 5
+
+echo "Configuring s2 replica set"
+mongo --port 57017 << 'EOF'
+config = { _id: "s2", members:[
+          { _id : 0, host : "localhost:57017" },
+          { _id : 1, host : "localhost:57018" },
+          { _id : 2, host : "localhost:57019" }]};
+rs.initiate(config)
+EOF
+
+
+# now start 3 config servers
+echo "Starting config servers"
+mkdir -p /data/config/config-a /data/config/config-b /data/config/config-c 
+mongod --logpath "cfg-a.log" --dbpath /data/config/config-a --port 57040 --fork --configsvr --smallfiles
+mongod --logpath "cfg-b.log" --dbpath /data/config/config-b --port 57041 --fork --configsvr --smallfiles
+mongod --logpath "cfg-c.log" --dbpath /data/config/config-c --port 57042 --fork --configsvr --smallfiles
+
+
+# now start the mongos on a standard port
+mongos --logpath "mongos-1.log" --configdb localhost:57040,localhost:57041,localhost:57042 --fork
+echo "Waiting 60 seconds for the replica sets to fully come online"
+sleep 60
+echo "Connnecting to mongos and enabling sharding"
+
+# add shards and enable sharding on the test db
+mongo <<'EOF'
+db.adminCommand( { addshard : "s0/"+"localhost:37017" } );
+db.adminCommand( { addshard : "s1/"+"localhost:47017" } );
+db.adminCommand( { addshard : "s2/"+"localhost:57017" } );
+db.adminCommand({enableSharding: "school"})
+db.adminCommand({shardCollection: "school.students", key: {student_id:1}});
+EOF
+```
+
+> test the sharded environment
+
+```javascript
+db=db.getSiblingDB("school");
+types = ['exam', 'quiz', 'homework', 'homework'];
+// 10,000 students
+for (i = 0; i < 10000; i++) {
+
+    // take 10 classes
+    for (class_counter = 0; class_counter < 10; class_counter ++) {
+	scores = []
+	    // and each class has 4 grades
+	    for (j = 0; j < 4; j++) {
+		scores.push({'type':types[j],'score':Math.random()*100});
+	    }
+
+	// there are 500 different classes that they can take
+	class_id = Math.floor(Math.random()*501); // get a class id between 0 and 500
+
+	record = {'student_id':i, 'scores':scores, 'class_id':class_id};
+	db.students.insert(record);
+
+    }
+
+}
+```
+
+### Implications of Sharding
+
+- Every document must include a _shard key_
+- shard key is **immutable**
+- index that starts with the shard key
+- no unique index unless it is the shard key
+
+Drivers will connect to multiple mongos process
+
+### Choosing a shard key
+
+1. sufficient cardinality - sufficient variety of values
+2. AVOID hotspotting monotonically increment - for example BSON_ID because otherwise you put always values in the last shard. For example Do not shard on order_id but on vendor or order_date or both of them.
+
+
+
+
+
 
 ### template
 ```javascript
